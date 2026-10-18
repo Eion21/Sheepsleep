@@ -3,8 +3,11 @@ package io.github.reposo.ui.screens
 import android.app.Activity
 import android.app.TimePickerDialog
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.EaseInOut
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -41,6 +44,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -260,47 +264,100 @@ fun NightScreensaver(
     }
 }
 
-/** Cielo: estrellas con titileo lento, generadas una sola vez para que no salten. */
+/**
+ * Cielo: estrellas que titilan a distinto ritmo y derivan muy despacio.
+ *
+ * Cada estrella tiene su propia fase y velocidad, así que no parpadean al unísono (que es
+ * lo que delata una animación barata). La deriva es de pocos píxeles por minuto: se nota
+ * si miras, pero no distrae a quien intenta dormirse.
+ */
 @Composable
 private fun StarField(modifier: Modifier = Modifier) {
     val stars = remember {
         val random = Random(11)
-        List(54) {
+        List(64) {
             Star(
                 x = random.nextFloat(),
                 y = random.nextFloat(),
-                radius = 0.7f + random.nextFloat() * 1.5f,
-                alpha = 0.25f + random.nextFloat() * 0.55f,
+                radius = 0.6f + random.nextFloat() * 1.7f,
+                alpha = 0.22f + random.nextFloat() * 0.58f,
+                // Periodo entre 2,6 y 7,4 s: sin dos estrellas iguales.
+                periodMs = 2600 + random.nextInt(4800),
+                // Desfase inicial para que ninguna arranque encendida a la vez.
+                phase = random.nextFloat(),
+                driftX = (random.nextFloat() - 0.5f) * 26f,
+                driftY = (random.nextFloat() - 0.5f) * 20f,
             )
         }
     }
-    val twinkle by rememberInfiniteTransition(label = "twinkle").animateFloat(
-        initialValue = 0.55f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(3200, easing = EaseInOut),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "twinkleAlpha",
-    )
+
+    // Un único reloj que avanza de forma continua; cada estrella lo usa con su periodo
+    // y su fase. Una transition por estrella serían 64 animaciones compitiendo.
+    val clock = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        clock.animateTo(
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(60_000, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart,
+            ),
+        )
+    }
 
     Canvas(modifier) {
-        // Se reparten por toda la pantalla: al hacer scroll la franja superior queda vacía
-        // y el fondo se vería plano justo donde miras antes de dormir.
+        val t = clock.value
         stars.forEach { star ->
-            val center = Offset(star.x * size.width, star.y * size.height)
+            // Titileo: seno entre 0.35 y 1, con la fase propia de la estrella.
+            val local = (t * 60_000f / star.periodMs + star.phase) % 1f
+            val twinkle = 0.35f + 0.65f * (0.5f + 0.5f * sin(local * 2f * PI.toFloat()))
+
+            val center = Offset(
+                x = star.x * size.width + star.driftX.dp.toPx() * t,
+                y = star.y * size.height + star.driftY.dp.toPx() * t,
+            )
+            val r = star.radius.dp.toPx()
+            val a = star.alpha * twinkle
+
+            // Halo solo en las más grandes: da profundidad sin coste perceptible.
+            if (star.radius > 1.6f) {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(Color.White.copy(alpha = a * 0.22f), Color.Transparent),
+                        center = center,
+                        radius = r * 4f,
+                    ),
+                    radius = r * 4f,
+                    center = center,
+                )
+            }
             drawCircle(
-                color = Color.White.copy(alpha = star.alpha * twinkle * 0.75f),
-                radius = star.radius.dp.toPx(),
+                color = Color.White.copy(alpha = a * 0.85f),
+                radius = r,
                 center = center,
             )
         }
     }
 }
 
-private data class Star(val x: Float, val y: Float, val radius: Float, val alpha: Float)
+private data class Star(
+    val x: Float,
+    val y: Float,
+    val radius: Float,
+    val alpha: Float,
+    val periodMs: Int,
+    val phase: Float,
+    val driftX: Float,
+    val driftY: Float,
+)
 
-/** Luna de arcilla: disco mate, cráteres, ojos cerrados y rubor. Respira muy despacio. */
+/**
+ * Luna de arcilla: disco mate, cráteres, ojos cerrados y rubor.
+ *
+ * Tres animaciones encadenadas, todas muy lentas para no robar el sueño:
+ * - respiración (escala) continua;
+ * - el halo que la rodea late a otro ritmo, así el brillo no va pegado al volumen;
+ * - cada cierto tiempo abre y cierra los ojos, un parpadeo de oveja dormida.
+ */
 @Composable
 private fun ClayMoon() {
     val breath by rememberInfiniteTransition(label = "moonBreath").animateFloat(
@@ -312,6 +369,36 @@ private fun ClayMoon() {
         ),
         label = "moonBreath",
     )
+
+    // Halo con su propio periodo (7,3 s) y desfasado: el brillo respira distinto que la masa.
+    val halo by rememberInfiniteTransition(label = "moonHalo").animateFloat(
+        initialValue = 0.72f,
+        targetValue = 1.18f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(7300, easing = EaseInOut),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "moonHaloPulse",
+    )
+
+    // Parpadeo: casi todo el tiempo dormida (1 = ojos cerrados). Cada 7 s se abre un
+    // instante y vuelve a cerrarse con una curva suave.
+    var eyelid by remember { mutableFloatStateOf(1f) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            kotlinx.coroutines.delay(7000)
+            animate(
+                initialValue = 1f,
+                targetValue = 0.12f,
+                animationSpec = tween(420, easing = EaseInOut),
+            ) { value, _ -> eyelid = value }
+            animate(
+                initialValue = 0.12f,
+                targetValue = 1f,
+                animationSpec = tween(620, easing = EaseInOut),
+            ) { value, _ -> eyelid = value }
+        }
+    }
 
     Canvas(
         Modifier
@@ -327,11 +414,11 @@ private fun ClayMoon() {
         // Halo: da la sensación de que la luna ilumina la habitación.
         drawCircle(
             brush = Brush.radialGradient(
-                colors = listOf(NightAccent.copy(alpha = 0.20f), Color.Transparent),
+                colors = listOf(NightAccent.copy(alpha = 0.20f * halo), Color.Transparent),
                 center = center,
-                radius = r * 2.05f,
+                radius = r * 2.05f * halo,
             ),
-            radius = r * 2.05f,
+            radius = r * 2.05f * halo,
             center = center,
         )
 
@@ -363,11 +450,12 @@ private fun ClayMoon() {
             )
         }
 
-        // Ojos cerrados: arcos tranquilos.
+        // Ojos: el arco se aplana al abrirse. Con eyelid = 1 queda la curva dormida de
+        // siempre y con 0,12 una línea casi recta, que se lee como ojo abierto.
         val eyeY = center.y + r * 0.06f
         val eyeDx = r * 0.34f
         val eyeW = r * 0.36f
-        val eyeH = r * 0.30f
+        val eyeH = r * 0.30f * eyelid
         listOf(-1f, 1f).forEach { side ->
             drawArc(
                 color = Color(0xFF5B4A84),

@@ -93,13 +93,24 @@ fun HomeScreen(
 
             // HEADER
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // El logo va sin pastilla: la oveja ya es una forma en sí misma y el
-                // recuadro lavanda la apagaba al ser del mismo tono.
-                Image(
-                    painter = painterResource(R.drawable.ic_sheep_logo),
-                    contentDescription = null,
-                    modifier = Modifier.size(52.dp),
-                )
+                // El logo se apoya en una pastilla de masa: el recorte de la oveja solo
+                // flotando sobre el fondo se leía como una pegatina.
+                Box(
+                    modifier = Modifier
+                        .size(60.dp)
+                        .clay(
+                            RoundedCornerShape(22.dp),
+                            colors.primaryContainer,
+                            elevation = 7.dp,
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Image(
+                        painter = painterResource(R.drawable.ic_sheep_logo),
+                        contentDescription = null,
+                        modifier = Modifier.size(46.dp),
+                    )
+                }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(

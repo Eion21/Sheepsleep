@@ -34,3 +34,6 @@ docs/superpowers/
 # Restos sin usar en la raíz: copia vieja de Clay.kt y un ZIP renombrado.
 /Clay.kt
 /DESIGN.md
+
+# Laboratorio de diseño: capturas y mockups, no forman parte de la app.
+design-lab/
