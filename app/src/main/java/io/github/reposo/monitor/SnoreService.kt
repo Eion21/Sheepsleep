@@ -164,6 +164,13 @@ class SnoreService : Service() {
         var loudMs = 0L
         var quietMs = 0L
         val chunkMs = READ_SAMPLES * 1000L / SAMPLE_RATE
+        val detector = SnoreDetector(
+            loudThreshold = LOUD_THRESHOLD,
+            quietThreshold = QUIET_THRESHOLD,
+            triggerMs = TRIGGER_MS,
+            quietMs = QUIET_MS,
+            maxSamples = MAX_SAMPLES,
+        )
 
         try {
             record.startRecording()
@@ -188,33 +195,32 @@ class SnoreService : Service() {
                 val rms = sqrt(sumSquares / n) / 32768.0
                 val currentMs = System.currentTimeMillis()
 
-                if (out == null) {
-                    if (rms > LOUD_THRESHOLD) loudMs += chunkMs else loudMs = 0L
-                    if (loudMs >= TRIGGER_MS) {
-                        out = openClip(currentMs - RING_SAMPLES * 1000L / SAMPLE_RATE, ring, ringIndex, ringFilled)
+                // La decisión de abrir y cerrar clips vive en SnoreDetector, que se prueba
+                // aparte. Aquí solo se escribe el audio cuando toca.
+                if (out != null) {
+                    out.writePcm(readBuf, n)
+                    clipSamples += n
+                    clipPeak = max(clipPeak, peak)
+                }
+                when (detector.feed(rms, n, chunkMs)) {
+                    SnoreDetector.Event.StartClip -> {
+                        val back = RING_SAMPLES * 1000L / SAMPLE_RATE
+                        out = openClip(currentMs - back, ring, ringIndex, ringFilled)
                         if (out == null) {
                             failCapture()
                             return
                         }
-                        clipStartMs = currentMs - RING_SAMPLES * 1000L / SAMPLE_RATE
+                        clipStartMs = currentMs - back
                         clipPeak = 0
                         clipSamples = 0
-                        quietMs = 0L
-                        loudMs = 0L
                     }
-                } else {
-                    val file = out
-                    file.writePcm(readBuf, n)
-                    clipSamples += n
-                    clipPeak = max(clipPeak, peak)
-                    if (rms > QUIET_THRESHOLD) quietMs = 0L else quietMs += chunkMs
-                    val done = quietMs >= QUIET_MS || clipSamples >= MAX_SAMPLES
-                    if (done) {
-                        closeClip(file, clipStartMs, clipSamples, clipPeak)
+
+                    SnoreDetector.Event.EndClip -> {
+                        out?.let { closeClip(it, clipStartMs, clipSamples, clipPeak) }
                         out = null
-                        quietMs = 0L
-                        loudMs = 0L
                     }
+
+                    null -> Unit
                 }
             }
         } catch (_: Exception) {
@@ -281,8 +287,26 @@ class SnoreService : Service() {
     }
 
     private fun failCapture() {
+        // Se avisa en la notificación y se apaga el flag: antes el servicio se detenía
+        // en silencio y la UI seguía diciendo "Grabando" aunque el micrófono estuviera
+        // cerrado (por ejemplo, ocupado por otra app).
         running = false
-        serviceScope.launch { stopSelf() }
+        settings.snoreActive = false
+        settings.snoreStartMs = 0L
+        serviceScope.launch {
+            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            manager.notify(
+                NOTIF_ID + 1,
+                NotificationCompat.Builder(this@SnoreService, CHANNEL_ID)
+                    .setSmallIcon(R.drawable.ic_snore_mic)
+                    .setContentTitle("No se pudo usar el micrófono")
+                    .setContentText("Otra app puede estar usándolo. La grabación se detuvo.")
+                    .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                    .setAutoCancel(true)
+                    .build(),
+            )
+            stopSelf()
+        }
     }
 
     private fun createChannel() {

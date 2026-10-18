@@ -123,6 +123,10 @@ fun ReposoApp(
     var snoreActive by remember { mutableStateOf(settingsStore.snoreActive) }
     var snoreStartMs by remember { mutableStateOf(settingsStore.snoreStartMs) }
 
+    // Salvapantallas nocturno: se abre al empezar la noche y se cierra con "Salir"
+    // sin detener la sesión (el sueño sigue registrándose de fondo).
+    var nightMode by remember { mutableStateOf(false) }
+
     fun startSnore() {
         if (settingsStore.snoreStartMs == 0L) {
             settingsStore.snoreStartMs = System.currentTimeMillis()
@@ -132,10 +136,31 @@ fun ReposoApp(
         snoreStartMs = settingsStore.snoreStartMs
     }
 
+    fun hasMicPermission(): Boolean =
+        androidx.core.content.ContextCompat.checkSelfPermission(
+            context, android.Manifest.permission.RECORD_AUDIO,
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
     val snorePermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
         if (granted) startSnore()
+    }
+
+    /**
+     * Arranca la noche y, si falta, pide el micrófono.
+     *
+     * El permiso se pedía solo al tocar "Grabar ronquidos", así que quien empezaba la
+     * noche desde el botón grande nunca lo veía y la grabación quedaba silenciosamente
+     * desactivada. Ahora se pide en el momento en que tiene sentido: al empezar.
+     */
+    fun startNight() {
+        sleepVm.start(lastMix?.title)
+        playerVm.playLast()
+        nightMode = true
+        if (!snoreActive && !hasMicPermission()) {
+            snorePermissionLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
+        }
     }
 
     // Si el servicio se detiene solo (micrófono fallido), sincronizar el estado.
@@ -157,9 +182,6 @@ fun ReposoApp(
         true
     }
 
-    // Salvapantallas nocturno: se abre al empezar la noche y se cierra con "Salir"
-    // sin detener la sesión (el sueño sigue registrándose de fondo).
-    var nightMode by remember { mutableStateOf(false) }
     LaunchedEffect(active) {
         if (active == null) nightMode = false
     }
@@ -203,11 +225,7 @@ fun ReposoApp(
                         SleepScreen(
                             active = active,
                             mixTitle = lastMix?.title,
-                            onStart = {
-                                sleepVm.start(lastMix?.title)
-                                playerVm.playLast()
-                                nightMode = true
-                            },
+                            onStart = { startNight() },
                             onStop = {
                                 sleepVm.stop()
                                 playerVm.pause()

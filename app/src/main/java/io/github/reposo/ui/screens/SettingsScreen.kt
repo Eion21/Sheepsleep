@@ -147,16 +147,38 @@ fun SettingsScreen(
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Optimización de batería", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
                     Text("Evita que Android cierre el monitor de sueño durante la noche.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+
+                    // Estado real, consultado al sistema: antes el botón no decía nada y
+                    // no había forma de saber si la exclusión había surtido efecto.
+                    val powerManager = remember {
+                        context.getSystemService(android.content.Context.POWER_SERVICE)
+                            as android.os.PowerManager
+                    }
+                    var ignoringBattery by remember {
+                        mutableStateOf(powerManager.isIgnoringBatteryOptimizations(context.packageName))
+                    }
+                    // Al volver de los ajustes del sistema se refresca el estado.
+                    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+                    DisposableEffect(lifecycleOwner) {
+                        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+                            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                                ignoringBattery =
+                                    powerManager.isIgnoringBatteryOptimizations(context.packageName)
+                            }
+                        }
+                        lifecycleOwner.lifecycle.addObserver(observer)
+                        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+                    }
+
+                    Text(
+                        text = if (ignoringBattery) "Ya está excluida" else "Aún sujeta a optimización",
+                        color = if (ignoringBattery) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 12.sp,
+                    )
                     ClayButton(
-                        text = "Excluir de optimización",
-                        onClick = {
-                            try {
-                                val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-                                    data = Uri.parse("package:${context.packageName}")
-                                }
-                                context.startActivity(intent)
-                            } catch (_: Exception) {}
-                        },
+                        text = if (ignoringBattery) "Revisar ajuste" else "Excluir de optimización",
+                        onClick = { requestIgnoreBatteryOptimizations(context) },
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
@@ -460,6 +482,37 @@ private fun share(context: android.content.Context, uri: android.net.Uri, mime: 
     context.startActivity(
         android.content.Intent.createChooser(intent, "Compartir datos de Sheepsleep"),
     )
+}
+
+/**
+ * Pide al sistema que excluya la app de la optimización de batería.
+ *
+ * Cadena de intentos, porque el diálogo directo no siempre está disponible:
+ * 1. El diálogo de la app (ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS). Es el más
+ *    claro para el usuario y el único que permite concederlo en un toque.
+ * 2. Si el fabricante lo bloquea, la lista de apps excluidas, donde el usuario puede
+ *    añadirla a mano.
+ * 3. Si tampoco, los ajustes de batería de la app.
+ *
+ * Antes esto era un único intent con `catch (_: Exception) {}`: si fallaba, el botón
+ * no hacía nada y no había ni rastro del motivo.
+ */
+private fun requestIgnoreBatteryOptimizations(context: android.content.Context) {
+    val pkg = Uri.parse("package:${context.packageName}")
+    val attempts = listOf(
+        android.content.Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).setData(pkg),
+        android.content.Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS),
+        android.content.Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).setData(pkg),
+    )
+    for (intent in attempts) {
+        intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+        try {
+            context.startActivity(intent)
+            return
+        } catch (_: Exception) {
+            // Se prueba el siguiente; el último (detalles de la app) siempre existe.
+        }
+    }
 }
 
 @Composable
