@@ -37,3 +37,6 @@ docs/superpowers/
 
 # Laboratorio de diseño: capturas y mockups, no forman parte de la app.
 design-lab/
+
+# APKs de release: se adjuntan a la release de GitHub, no al historial.
+*.apk
