@@ -31,11 +31,14 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlin.math.roundToInt
 import io.github.reposo.R
 import io.github.reposo.ui.LocalBottomBarInset
 import io.github.reposo.ui.stretchOverscroll
@@ -358,7 +361,7 @@ fun SheepCounter(
     LaunchedEffect(sheepCount) {
         if (sheepCount > 0) {
             jump.snapTo(0f)
-            jump.animateTo(1f, animationSpec = tween(650, easing = LinearEasing))
+            jump.animateTo(1f, animationSpec = tween(1200, easing = LinearEasing))
         }
     }
 
@@ -367,7 +370,22 @@ fun SheepCounter(
     val jumping = sheepCount > 0 && t < 1f
     val numberScale = 1f + 0.35f * arc
 
-    Row(
+    // Tamaño de la oveja y del icono de destino. El salto se calcula con estos dos
+    // valores, no con el ancho de la tarjeta: la oveja vivía en un Box de 48 dp pero su
+    // translationX salía de cardWidthPx * 0.72, así que cruzaba la tarjeta entera y
+    // acababa fuera del botón.
+    val sheepSize = 26.dp
+    val iconSize = 48.dp
+    val density = LocalDensity.current
+
+    // Distancia real de derecha a izquierda: del borde derecho (menos el margen interior)
+    // al centro del icono circular de la izquierda.
+    val travelPx = with(density) {
+        (cardWidthPx.toDp() - 18.dp - sheepSize - iconSize / 2).toPx().coerceAtLeast(0f)
+    }
+    val jumpHeightPx = with(density) { 22.dp.toPx() }
+
+    Box(
         modifier = Modifier
             .fillMaxWidth()
             .onSizeChanged { cardWidthPx = it.width }
@@ -376,91 +394,80 @@ fun SheepCounter(
                 onSheep()
                 sleepingPose = (sleepingPose + 1) % 2
             }
-            .padding(
-                horizontal = 18.dp,
-                vertical = 14.dp
-            ),
-
-        verticalAlignment = Alignment.CenterVertically
+            .padding(horizontal = 18.dp, vertical = 14.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .background(
-                    MaterialTheme.colorScheme.primaryContainer,
-                    CircleShape
-                ),
-            contentAlignment = Alignment.Center
-        ) {
+        // La oveja que salta se dibuja aquí, en coordenadas de la tarjeta. Antes estaba
+        // anidada en el Box del icono, así que no podía recorrer el ancho real.
+        if (jumping) {
             Icon(
-                painter = painterResource(
-                    if (sleepingPose == 0) R.drawable.ic_sheep_sleep_a
-                    else R.drawable.ic_sheep_sleep_b,
-                ),
+                painter = painterResource(R.drawable.ic_sheep_jump),
                 contentDescription = null,
-                modifier = Modifier.size(30.dp),
+                modifier = Modifier
+                    .size(sheepSize)
+                    .offset { IntOffset(x = (travelPx * (1f - t)).roundToInt(), y = 0) }
+                    .graphicsLayer {
+                        translationY = -jumpHeightPx * arc
+                        rotationZ = -16f * (1f - 2f * t) * arc
+                        alpha = if (t > 0.92f) ((1f - t) / 0.08f) else 1f
+                    },
             )
+        }
 
-            if (jumping) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(iconSize)
+                    .background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
                 Icon(
-                    painter = painterResource(R.drawable.ic_sheep_jump),
+                    painter = painterResource(
+                        if (sleepingPose == 0) R.drawable.ic_sheep_sleep_a
+                        else R.drawable.ic_sheep_sleep_b,
+                    ),
                     contentDescription = null,
-                    modifier = Modifier
-                        .size(30.dp)
-                        .graphicsLayer {
-                            translationX = cardWidthPx * 0.72f * (1f - 2f * t)
-                            translationY = -cardWidthPx * 0.14f * arc
-                            rotationZ = 18f * arc
-                            scaleX = 1.1f
-                            scaleY = 1.1f
-                        },
+                    modifier = Modifier.size(30.dp),
                 )
             }
-        }
 
-        Spacer(
-            modifier = Modifier.width(14.dp)
-        )
+            Spacer(Modifier.width(14.dp))
 
-        Column(
-            modifier = Modifier.weight(1f)
-        ) {
-            Text(
-                text = "Contar ovejitas",
-                color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.Bold,
-                fontSize = 15.sp
-            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Contar ovejitas",
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp
+                )
+                Text(
+                    text = if (sleeping)
+                        "Toca cada vez que salte una"
+                    else
+                        "Disponible al comenzar",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 12.sp
+                )
+            }
 
-            Text(
-                text = if (sleeping)
-                    "Toca cada vez que salte una"
-                else
-                    "Disponible al comenzar",
-
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = 12.sp
-            )
-        }
-
-        if (sleeping) {
-            Text(
-                text = "$sheepCount",
-                color = MaterialTheme.colorScheme.primary,
-                fontSize = 21.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.graphicsLayer {
-                    scaleX = numberScale
-                    scaleY = numberScale
-                },
-            )
-        } else {
-            Icon(
-                painter = painterResource(R.drawable.ic_sheep_sleep_a),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(22.dp),
-            )
+            if (sleeping) {
+                Text(
+                    text = "$sheepCount",
+                    color = MaterialTheme.colorScheme.primary,
+                    fontSize = 21.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.graphicsLayer {
+                        scaleX = numberScale
+                        scaleY = numberScale
+                    },
+                )
+            } else {
+                Icon(
+                    painter = painterResource(R.drawable.ic_sheep_sleep_a),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
         }
     }
 }
