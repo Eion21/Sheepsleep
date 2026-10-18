@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">Sheepsleep</string>
+    <string name="nav_home">Inicio</string>
+    <string name="nav_routine">Rutina</string>
+    <string name="nav_sleep">Dormir</string>
+    <string name="nav_stats">Estadísticas</string>
+    <string name="nav_settings">Ajustes</string>
+    <string name="play">Reproducir</string>
+    <string name="pause">Pausar</string>
+    <string name="widget_idle">Sin mezcla</string>
+    <string name="widget_week_empty">Aún no hay noches registradas</string>
+    <string name="widget_media_desc">Controla tu última mezcla</string>
+    <string name="widget_stats_desc">Resumen de sueño de la semana</string>
+</resources>

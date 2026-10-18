@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  El catálogo resuelve los sonidos por nombre con Resources.getIdentifier(), una
+  referencia invisible para el shrinker de recursos. Sin este keep, R8 puede quitar
+  los .wav del APK release y la app arranca sin sonar.
+-->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@raw/brown_noise,@raw/pink_noise,@raw/white_noise" />

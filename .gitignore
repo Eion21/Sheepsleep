@@ -1,0 +1,36 @@
+# --- Android / Gradle ---
+*.iml
+.gradle/
+.kotlin/
+/local.properties
+/.idea/
+.DS_Store
+/build/
+/app/build/
+captures/
+
+# --- Firma: nunca al repositorio ---
+*.jks
+*.keystore
+*.p12
+*.pem
+*.key
+keystore.properties
+
+# --- Entorno del agente y artefactos de trabajo ---
+.zwork/
+.atl/
+.opencode/
+graphify-out/
+build/
+*.zip
+
+# --- Material de trabajo que no forma parte de la app ---
+my-video/
+r2-test/
+sounds-module/
+Ovejas/
+docs/superpowers/
+# Restos sin usar en la raíz: copia vieja de Clay.kt y un ZIP renombrado.
+/Clay.kt
+/DESIGN.md

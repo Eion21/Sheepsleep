@@ -1,0 +1,7 @@
+<resources>
+    <style name="Theme.Reposo" parent="android:Theme.Material.NoActionBar">
+        <!-- Sin esto la ventana muestra el gris por defecto de Material en el arranque
+             y en los bordes que quedan fuera de Compose. -->
+        <item name="android:windowBackground">@color/window_background</item>
+    </style>
+</resources>

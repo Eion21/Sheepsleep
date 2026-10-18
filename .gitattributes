@@ -1,0 +1,17 @@
+# Normaliza finales de línea al hacer commit, para no ver diffs falsos entre
+# Windows y Linux en archivos de texto.
+* text=auto eol=lf
+
+# Binarios: sin conversión ni detección de texto.
+*.jar   binary
+*.wav   binary
+*.png   binary
+*.jpg   binary
+*.ttf   binary
+*.jks   binary
+*.keystore binary
+
+# Scripts: siempre LF, si no el shebang deja de funcionar en Linux y macOS.
+gradlew   text eol=lf
+*.sh      text eol=lf
+*.bat     text eol=crlf

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="widget_bg">#FEF9FF</color>
+    <color name="widget_text">#1A1625</color>
+    <color name="widget_text_secondary">#6B6480</color>
+    <color name="widget_accent">#6A52C8</color>
+    <!-- Mismo valor que backgroundLight: evita el gris del windowBackground mientras
+         Compose dibuja el primer frame. -->
+    <color name="window_background">#F6F1FB</color>
+    <!-- Lavanda del badge del logo: fondo del icono adaptativo. -->
+    <color name="ic_launcher_background">#A8A0D8</color>
+</resources>
