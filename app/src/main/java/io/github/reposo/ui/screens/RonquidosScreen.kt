@@ -153,7 +153,8 @@ private fun SnoreClipRow(
     onToggle: () -> Unit,
     onDelete: () -> Unit,
 ) {
-    ClayCard(modifier = Modifier.fillMaxWidth(), padding = 0.dp) {
+    // popIn = false: es una fila de lista, la deformación se repetiría en cada recarga.
+    ClayCard(modifier = Modifier.fillMaxWidth(), padding = 0.dp, popIn = false) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()

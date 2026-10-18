@@ -109,6 +109,8 @@ fun MixerScreen(
                     ClayCard(
                         modifier = Modifier.fillMaxWidth(),
                         padding = 16.dp,
+                        // Fila de lista: sin deformación de entrada.
+                        popIn = false,
                     ) {
                         Column {
                             Row {

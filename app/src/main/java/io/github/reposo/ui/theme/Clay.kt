@@ -2,6 +2,7 @@
 
 package io.github.reposo.ui.theme
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -250,14 +251,45 @@ fun ClayCard(
     elevation: Dp = 6.dp,
     containerColor: Color = MaterialTheme.colorScheme.surface,
     onClick: (() -> Unit)? = null,
+    /**
+     * Deformación al entrar: la pieza llega un poco encogida y se asienta con un
+     * rebote corto. Se desactiva en listas largas, donde repetirla cansa.
+     */
+    popIn: Boolean = true,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    // Rebote de entrada: 0.94 → 1 con muelle. La escala arranca por debajo para que la
+    // pieza parezca inflarse, no solo aparecer.
+    val enter = remember { Animatable(if (popIn) 0.94f else 1f) }
+    LaunchedEffect(Unit) {
+        if (popIn) {
+            enter.animateTo(
+                targetValue = 1f,
+                animationSpec = spring(dampingRatio = 0.55f, stiffness = 420f),
+            )
+        }
+    }
+
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    // Las tarjetas pulsables también ceden, con menos recorrido que un botón:
+    // son superficies grandes y un aplastado fuerte se vería exagerado.
+    val press by animateFloatAsState(
+        targetValue = if (pressed) 0f else 1f,
+        animationSpec = spring(dampingRatio = 0.5f, stiffness = 650f),
+        label = "cardPress",
+    )
+
     Column(
         modifier
+            .graphicsLayer {
+                val s = enter.value * (0.985f + 0.015f * press)
+                scaleX = s
+                scaleY = enter.value * (0.975f + 0.025f * press)
+            }
             .clay(shape, containerColor, elevation)
             .then(
                 if (onClick != null) {
-                    val interaction = remember { MutableInteractionSource() }
                     Modifier.clickable(interactionSource = interaction, indication = null, onClick = onClick)
                 } else {
                     Modifier
@@ -289,9 +321,14 @@ fun ClayButton(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
-    // Al pulsar la masa se aplasta: baja el volumen (elevación), se comprime en vertical
-    // y se ensancha un poco. Antes solo cambiaba la sombra y no se notaba el toque.
-    val press by animateFloatAsState(if (pressed) 0f else 1f, tween(180), label = "clayPress")
+    // Al pulsar la masa se aplasta: pierde altura, se ensancha y la elevación cae.
+    // Con muelle en vez de tween, el rebote al soltar se siente como masa y no como
+    // un fundido. La rigidez alta mantiene la respuesta inmediata al dedo.
+    val press by animateFloatAsState(
+        targetValue = if (pressed) 0f else 1f,
+        animationSpec = spring(dampingRatio = 0.42f, stiffness = 700f),
+        label = "clayPress",
+    )
     val color = if (enabled) containerColor else containerColor.copy(alpha = 0.38f)
     val contentAlpha = if (enabled) 1f else 0.5f
 
@@ -300,16 +337,36 @@ fun ClayButton(
     Row(
         modifier
             .graphicsLayer {
-                scaleX = 0.985f + 0.018f * press
-                scaleY = 0.93f + 0.07f * press
-                translationY = 3.dp.toPx() * (1f - press)
+                // Se aplasta más que antes: 9% de altura, 2,5% de anchura y baja 3,5 dp.
+                // Es el gesto de presionar una pastilla de plastilina, que cede y se
+                // expande hacia los lados en vez de encogerse.
+                scaleX = 0.975f + 0.025f * press
+                scaleY = 0.91f + 0.09f * press
+                translationY = 3.5.dp.toPx() * (1f - press)
             }
             .clay(
                 shape,
                 color,
-                elevation = (1.dp + 8.dp * press),
-                softness = 0.55f + 0.55f * press,
+                elevation = (0.5.dp + 8.5.dp * press),
+                softness = 0.45f + 0.65f * press,
             )
+            // Hundimiento interior: al presionar el centro cede y el borde queda más alto.
+            // Sin esto la pieza solo se encoge y sigue leyéndose como una superficie rígida.
+            .drawWithContent {
+                drawContent()
+                val dent = 1f - press
+                if (dent > 0.01f) {
+                    drawRect(
+                        Brush.radialGradient(
+                            0f to Color.Black.copy(alpha = 0.20f * dent),
+                            0.65f to Color.Black.copy(alpha = 0.07f * dent),
+                            1f to Color.Transparent,
+                            center = center,
+                            radius = size.minDimension * 0.85f,
+                        ),
+                    )
+                }
+            }
             .then(
                 if (enabled) {
                     Modifier.clickable(interactionSource = interaction, indication = null, onClick = onClick)

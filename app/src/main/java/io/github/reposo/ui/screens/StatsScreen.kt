@@ -130,40 +130,56 @@ private fun BarChartCard(sessions: List<SleepSession>) {
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .height(150.dp)
+                    .height(190.dp)
                     .padding(top = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Bottom
             ) {
                 recent.forEach { session ->
                     val duration = (session.endMs ?: System.currentTimeMillis()) - session.startMs
-                    val fraction = ((duration.toFloat() / maxDuration.toFloat()) * animProgress).coerceIn(0.05f, 1f)
+                    val fraction = ((duration.toFloat() / maxDuration.toFloat()) * animProgress).coerceIn(0.02f, 1f)
 
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Bottom,
                         modifier = Modifier.weight(1f).fillMaxHeight()
                     ) {
+                        // El valor se fija arriba del todo de la columna: así la barra no
+                        // puede empujarlo fuera de su sitio por alta que sea.
                         Text(
                             text = formatDuration(duration),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
                             modifier = Modifier.padding(bottom = 4.dp)
                         )
+                        // La barra ocupa el espacio que sobra, descontando los dos textos.
+                        // Antes era fillMaxHeight(fraction) sobre los 150 dp completos, así
+                        // que la barra más alta desbordaba la tarjeta y tapaba el día.
                         Box(
                             modifier = Modifier
-                                .width(24.dp)
-                                .fillMaxHeight(fraction)
-                                .background(
-                                    color = MaterialTheme.colorScheme.primary,
-                                    shape = RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp)
-                                )
-                        )
+                                .weight(1f)
+                                .width(24.dp),
+                            contentAlignment = Alignment.BottomCenter,
+                        ) {
+                            Box(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .fillMaxHeight(fraction)
+                                    .background(
+                                        color = MaterialTheme.colorScheme.primary,
+                                        shape = RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp)
+                                    )
+                            )
+                        }
                         Spacer(Modifier.height(6.dp))
                         Text(
-                            text = DateTimeFormatter.ofPattern("E").withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(session.startMs)),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            // Fecha corta, no solo el día de la semana: dos noches del
+                            // mismo día mostraban ambas "Sun", que no distingue nada.
+                            text = DateTimeFormatter.ofPattern("d MMM").withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(session.startMs)),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1
                         )
                     }
                 }
