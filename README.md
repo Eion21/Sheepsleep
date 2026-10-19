@@ -8,7 +8,7 @@
 
 Sin cuentas · Sin nube · Sin servicios de Google
 
-![Versión](https://img.shields.io/badge/versi%C3%B3n-1.1.1-blue)
+![Versión](https://img.shields.io/badge/versi%C3%B3n-1.1.2-blue)
 ![Android](https://img.shields.io/badge/Android-8.0%2B-3DDC84?logo=android&logoColor=white)
 ![Licencia](https://img.shields.io/badge/licencia-MIT-green)
 
@@ -106,7 +106,7 @@ Los sonidos que importa el usuario se guardan en `filesDir/custom_audio`.
 ./gradlew :app:testDebugUnitTest
 ```
 
-Son 43 pruebas centradas en lo que puede afectar al usuario:
+Son 46 pruebas centradas en lo que puede afectar al usuario:
 
 | Archivo | Qué comprueba |
 | --- | --- |
