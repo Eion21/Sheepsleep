@@ -5,4 +5,4 @@
   los .wav del APK release y la app arranca sin sonar.
 -->
 <resources xmlns:tools="http://schemas.android.com/tools"
-    tools:keep="@raw/brown_noise,@raw/pink_noise,@raw/white_noise" />
+    tools:keep="@raw/brown_noise,@raw/pink_noise,@raw/white_noise,@raw/rain,@raw/waves,@raw/wind,@raw/fire,@raw/forest" />

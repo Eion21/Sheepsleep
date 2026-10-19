@@ -7,18 +7,25 @@ import org.json.JSONObject
 import java.io.File
 
 /** [rawName] es el nombre del archivo en res/raw (sin extensión). [filePath] es la ruta local si es propio. */
-data class Sound(val id: String, val label: String, val rawName: String?, val filePath: String? = null)
+data class Sound(
+    val id: String,
+    val label: String,
+    val rawName: String?,
+    val filePath: String? = null,
+    /** Agrupación para la UI: "Ruido", "Naturaleza", "Hogar". */
+    val category: String = "Ruido",
+)
 
 object SoundCatalog {
     val builtin = listOf(
-        Sound("white", "Ruido blanco", "white_noise"),
-        Sound("pink", "Ruido rosa", "pink_noise"),
-        Sound("brown", "Ruido marrón", "brown_noise"),
-        Sound("rain", "Lluvia", "rain"),
-        Sound("waves", "Olas", "waves"),
-        Sound("wind", "Viento", "wind"),
-        Sound("fire", "Fogata", "fire"),
-        Sound("forest", "Bosque", "forest"),
+        Sound("white", "Ruido blanco", "white_noise", category = "Ruido"),
+        Sound("pink", "Ruido rosa", "pink_noise", category = "Ruido"),
+        Sound("brown", "Ruido marrón", "brown_noise", category = "Ruido"),
+        Sound("rain", "Lluvia", "rain", category = "Naturaleza"),
+        Sound("waves", "Olas", "waves", category = "Naturaleza"),
+        Sound("wind", "Viento", "wind", category = "Naturaleza"),
+        Sound("forest", "Bosque de noche", "forest", category = "Naturaleza"),
+        Sound("fire", "Fogata", "fire", category = "Hogar"),
     )
 
     private fun customSoundsFile(context: Context): File = File(context.filesDir, "custom_sounds.json")

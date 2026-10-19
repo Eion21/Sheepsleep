@@ -104,23 +104,35 @@ fun MixerScreen(
                 )
             }
             LazyColumn(Modifier.weight(1f).stretchOverscroll()) {
-                items(sounds, key = { it.id }) { s ->
-                    val v = volumes[s.id] ?: 0f
-                    ClayCard(
-                        modifier = Modifier.fillMaxWidth(),
-                        padding = 16.dp,
-                        // Fila de lista: sin deformación de entrada.
-                        popIn = false,
-                    ) {
-                        Column {
-                            Row {
-                                Text(s.label, Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurface)
-                                Text("${(v * 100).toInt()}%", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                // Agrupado por categoría: con 8 sonidos una lista plana obliga a
+                // recorrerla entera para encontrar la fogata.
+                sounds.groupBy { it.category }.forEach { (categoria, grupo) ->
+                    item(key = "sec_$categoria") {
+                        Text(
+                            text = categoria.uppercase(),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
+                        )
+                    }
+                    items(grupo, key = { it.id }) { s ->
+                        val v = volumes[s.id] ?: 0f
+                        ClayCard(
+                            modifier = Modifier.fillMaxWidth(),
+                            padding = 16.dp,
+                            // Fila de lista: sin deformación de entrada.
+                            popIn = false,
+                        ) {
+                            Column {
+                                Row {
+                                    Text(s.label, Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurface)
+                                    Text("${(v * 100).toInt()}%", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                ClaySlider(
+                                    value = v,
+                                    onValueChange = { volumes[s.id] = it; onVolume(s.id, it) },
+                                )
                             }
-                            ClaySlider(
-                                value = v,
-                                onValueChange = { volumes[s.id] = it; onVolume(s.id, it) },
-                            )
                         }
                     }
                 }

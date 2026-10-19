@@ -18,8 +18,10 @@ import androidx.compose.material.icons.rounded.Nightlight
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Forest
+import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material.icons.rounded.Water
+import androidx.compose.material.icons.rounded.Waves
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -69,9 +71,11 @@ fun HomeScreen(
     var selectedGoal by remember { mutableStateOf(Presets.goals.first()) }
 
     val defaultSounds = listOf(
-        SleepSound("Marrón profundo", "Ruido marrón", Icons.Rounded.GraphicEq, Presets.all.firstOrNull { idMatches(it.id, "brown") }),
-        SleepSound("Marrón + rosa", "2 sonidos", Icons.Rounded.Water, Presets.all.firstOrNull { idMatches(it.id, "rain") }),
-        SleepSound("Pradera nocturna", "Ovejas + naturaleza", Icons.Rounded.Forest, Presets.all.firstOrNull { idMatches(it.id, "forest") })
+        SleepSound("Marrón profundo", "Ruido marrón", Icons.Rounded.GraphicEq, Presets.all.firstOrNull { it.id == "brown_deep" }),
+        SleepSound("Lluvia en la ventana", "Lluvia", Icons.Rounded.Water, Presets.all.firstOrNull { it.id == "rain_window" }),
+        SleepSound("Olas del mar", "Olas", Icons.Rounded.Waves, Presets.all.firstOrNull { it.id == "ocean" }),
+        SleepSound("Cabaña con chimenea", "Fogata + viento", Icons.Rounded.LocalFireDepartment, Presets.all.firstOrNull { it.id == "cabin" }),
+        SleepSound("Bosque de noche", "Grillos y aire", Icons.Rounded.Forest, Presets.all.firstOrNull { it.id == "forest_night" }),
     )
 
     Box(
