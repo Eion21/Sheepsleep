@@ -25,11 +25,24 @@ object MovementMonitor : SensorEventListener {
     private const val BUCKET_MS = 10_000L
     private const val FLUSH_MS = 60_000L
 
-    // m/s² sobre la gravedad estimada. Fijo, sin ajustes (YAGNI).
-    private const val MEAN_LIGHT = 0.18f
-    private const val MEAN_MEDIUM = 0.6f
-    private const val MEAN_HIGH = 1.5f
-    private const val PEAK_HIGH = 4f
+    /**
+     * Umbrales en m/s² sobre la gravedad estimada.
+     *
+     * Estaban en 0.18 / 0.6 / 1.5 y no detectaban nada: dormir en una cama quieta da
+     * medias de 0.02–0.10, y girarse en la cama rara vez sostiene 0.6 de media durante
+     * 10 s. Ahora 0.05 ya marca actividad ligera, que es lo que separa "dormido quieto"
+     * de "me moví".
+     */
+    private const val MEAN_LIGHT = 0.035f
+    private const val MEAN_MEDIUM = 0.18f
+    private const val MEAN_HIGH = 0.55f
+
+    /**
+     * Un pico aislado tampoco basta para marcar "inquieto": girarse en la cama produce
+     * picos de 2–4 m/s² varias veces por noche, y eso no debería pintar la noche de rojo.
+     * Con 6 m/s² hace falta un golpe claro (caerse, levantarse de golpe).
+     */
+    private const val PEAK_HIGH = 6f
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -127,11 +140,20 @@ object MovementMonitor : SensorEventListener {
 
     private fun flush() {
         if (pending.isEmpty()) return
+        // El contexto se comprueba ANTES de vaciar: si es null, antes se descartaba el
+        // lote silenciosamente y se perdía hasta un minuto de movimiento.
+        val context = appContext ?: return
         val batch = pending.toList()
         pending.clear()
         lastFlushMs = System.currentTimeMillis()
-        val context = appContext ?: return
         val dao = ReposoDatabase.get(context).movementBuckets()
-        scope.launch { dao.insertAll(batch) }
+        scope.launch {
+            try {
+                dao.insertAll(batch)
+            } catch (_: Exception) {
+                // Si falla la escritura, se devuelve el lote para no perder los datos.
+                pending.addAll(batch)
+            }
+        }
     }
 }

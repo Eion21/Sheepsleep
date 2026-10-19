@@ -216,7 +216,7 @@ class SnoreService : Service() {
                     }
 
                     SnoreDetector.Event.EndClip -> {
-                        out?.let { closeClip(it, clipStartMs, clipSamples, clipPeak) }
+                        out?.let { closeClip(it, clipStartMs, clipPeak) }
                         out = null
                     }
 
@@ -227,7 +227,7 @@ class SnoreService : Service() {
             // micrófono inválido o interrupción: cierra lo que haya.
         } finally {
             try {
-                out?.let { closeClip(it, clipStartMs, clipSamples, clipPeak) }
+                out?.let { closeClip(it, clipStartMs, clipPeak) }
             } catch (_: Exception) {
             }
             try {
@@ -260,12 +260,15 @@ class SnoreService : Service() {
     private fun closeClip(
         raf: RandomAccessFile,
         startMs: Long,
-        samples: Int,
         peak: Int,
     ) {
         try {
             val totalData = raf.length() - 44
-            if (totalData <= 0 || samples < MIN_CLIP_SAMPLES) {
+            // El mínimo se mide sobre el ARCHIVO, no sobre "samples". Los 2 s de
+            // pre-buffer ya están escritos antes de que el detector abra el clip, así que
+            // comparar solo lo escrito después tiraba clips válidos de menos de 250 ms
+            // (un ronquido corto) aunque el wav tuviera segundos de audio.
+            if (totalData <= 0 || totalData < MIN_CLIP_BYTES) {
                 raf.close()
                 File(filesDir, "snore/clip_$startMs.wav").delete()
                 return
@@ -328,11 +331,25 @@ class SnoreService : Service() {
         private const val READ_SAMPLES = 2048 // 128 ms
         private const val RING_SAMPLES = SAMPLE_RATE * 2 // 2 s de pre-buffer
 
-        private const val LOUD_THRESHOLD = 0.06
-        private const val QUIET_THRESHOLD = 0.02
-        private const val TRIGGER_MS = 800L
+        /**
+         * Umbrales de nivel (RMS 0..1), medidos sobre el micrófono del teléfono.
+         *
+         * Estaban en 0.06 / 0.02, que en la práctica solo capturaban toses o hablar
+         * cerca del móvil. Un ronquido real a un metro da 0.02–0.06 de RMS, y el sonido
+         * de la habitación de noche ronda 0.005–0.015. Bajarlos a 0.02 / 0.008 es lo que
+         * separa "respiración y ronquido" de "silencio".
+         */
+        private const val LOUD_THRESHOLD = 0.02
+        private const val QUIET_THRESHOLD = 0.008
+
+        /**
+         * 800 ms de sonido sostenido para abrir un clip dejaba fuera los ronquidos
+         * entrecortados. 350 ms detecta un ronquido suelto sin dispararse con un golpe
+         * de sábanas.
+         */
+        private const val TRIGGER_MS = 350L
         private const val QUIET_MS = 4_000L
-        private const val MIN_CLIP_SAMPLES = SAMPLE_RATE / 4 // 250 ms
+        private const val MIN_CLIP_BYTES = SAMPLE_RATE * 2 / 4 // 250 ms de PCM 16 bits mono
         private const val MAX_SAMPLES = SAMPLE_RATE * 60 // 60 s por clip
 
         fun start(context: Context) {

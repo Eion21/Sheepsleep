@@ -8,7 +8,7 @@ import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
-import io.github.reposo.monitor.MovementMonitor
+
 
 /** Mantiene la reproducción en segundo plano (con la pantalla apagada) y la notificación. */
 class PlaybackService : MediaSessionService() {
@@ -21,7 +21,9 @@ class PlaybackService : MediaSessionService() {
         val e = MixEngine(this)
         engine = e
         session = MediaSession.Builder(this, e.master).setCallback(Callback()).build()
-        MovementMonitor.start(this)
+        // El monitor de movimiento NO se arranca aquí: dependía de la reproducción, así
+        // que si se empezaba la noche sin sonido no se registraba nada. Ahora lo gobierna
+        // la sesión de sueño desde ReposoApp.
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = session
@@ -32,7 +34,6 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
-        MovementMonitor.stop()
         session?.release()
         session = null
         engine?.release()

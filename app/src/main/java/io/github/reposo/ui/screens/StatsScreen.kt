@@ -107,7 +107,10 @@ fun StatsScreen(
 
 @Composable
 private fun BarChartCard(sessions: List<SleepSession>) {
-    val recent = sessions.takeLast(7)
+    // El DAO devuelve las sesiones de más nueva a más vieja. Aquí se necesitan las 7
+    // ÚLTIMAS (no las 7 primeras del listado) y en orden ascendente, para que el eje
+    // temporal vaya de izquierda (viejo) a derecha (nuevo) como se lee un gráfico.
+    val recent = sessions.take(7).reversed()
     if (recent.isEmpty()) return
 
     val durations = recent.map { (it.endMs ?: System.currentTimeMillis()) - it.startMs }

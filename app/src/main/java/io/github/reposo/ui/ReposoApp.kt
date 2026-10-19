@@ -36,6 +36,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -66,6 +67,7 @@ import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.delay
 import io.github.reposo.data.SettingsStore
 import io.github.reposo.data.SleepViewModel
+import io.github.reposo.monitor.MovementMonitor
 import io.github.reposo.monitor.SnoreService
 import io.github.reposo.player.AlarmScheduler
 import io.github.reposo.player.PlayerViewModel
@@ -123,6 +125,20 @@ fun ReposoApp(
     var snoreActive by remember { mutableStateOf(settingsStore.snoreActive) }
     var snoreStartMs by remember { mutableStateOf(settingsStore.snoreStartMs) }
 
+    // El monitor de movimiento sigue a la sesión de sueño, no a la reproducción: antes
+    // arrancaba en PlaybackService.onCreate, así que una noche sin sonido no registraba
+    // movimiento. Al terminar la sesión se para y se vuelca lo pendiente.
+    LaunchedEffect(active != null) {
+        if (active != null) {
+            MovementMonitor.start(context)
+        } else {
+            MovementMonitor.stop()
+        }
+    }
+    DisposableEffect(Unit) {
+        onDispose { MovementMonitor.stop() }
+    }
+
     // Salvapantallas nocturno: se abre al empezar la noche y se cierra con "Salir"
     // sin detener la sesión (el sueño sigue registrándose de fondo).
     var nightMode by remember { mutableStateOf(false) }
@@ -154,12 +170,22 @@ fun ReposoApp(
      * noche desde el botón grande nunca lo veía y la grabación quedaba silenciosamente
      * desactivada. Ahora se pide en el momento en que tiene sentido: al empezar.
      */
+    /**
+     * Arranca la noche, la reproducción y la grabación de ronquidos.
+     *
+     * Antes, si el permiso ya estaba concedido no se llamaba a [startSnore]: la
+     * grabación solo arrancaba en la primera concesión. A partir de la segunda noche
+     * el micrófono quedaba apagado en silencio, sin clips ni aviso.
+     */
     fun startNight() {
         sleepVm.start(lastMix?.title)
         playerVm.playLast()
         nightMode = true
-        if (!snoreActive && !hasMicPermission()) {
-            snorePermissionLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
+
+        when {
+            snoreActive -> Unit // ya estaba grabando
+            hasMicPermission() -> startSnore()
+            else -> snorePermissionLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
         }
     }
 

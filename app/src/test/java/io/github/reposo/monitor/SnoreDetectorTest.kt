@@ -19,9 +19,9 @@ class SnoreDetectorTest {
     private val chunkMs = 100L
 
     private fun detector() = SnoreDetector(
-        loudThreshold = 0.06,
-        quietThreshold = 0.02,
-        triggerMs = 800,
+        loudThreshold = 0.02,
+        quietThreshold = 0.008,
+        triggerMs = 350,
         quietMs = 4_000,
         maxSamples = 16_000 * 30,
     )
@@ -36,8 +36,8 @@ class SnoreDetectorTest {
     @Test
     fun `un ruido de fondo bajo el umbral no dispara`() {
         val d = detector()
-        // Justo por debajo del umbral de 0,06: no debe acumular.
-        repeat(200) { assertNull(d.feed(0.05, 1600, chunkMs)) }
+        // Justo por debajo del umbral de 0,02: no debe acumular.
+        repeat(200) { assertNull(d.feed(0.015, 1600, chunkMs)) }
         assertFalse(d.recording)
     }
 
@@ -53,6 +53,26 @@ class SnoreDetectorTest {
     }
 
     @Test
+    fun `un ronquido suave a un metro ya dispara`() {
+        // 0,03 de RMS es lo que da un ronquido real grabado desde la mesita. Con el
+        // umbral antiguo de 0,06 no se detectaba nada.
+        val d = detector()
+        var started = false
+        repeat(10) {
+            if (d.feed(0.03, 1600, chunkMs) == SnoreDetector.Event.StartClip) started = true
+        }
+        assertTrue("un ronquido suave debería abrir clip", started)
+    }
+
+    @Test
+    fun `el silencio de una habitacion no dispara`() {
+        // 0,006 es el ruido de fondo de una habitación de noche.
+        val d = detector()
+        repeat(300) { assertNull(d.feed(0.006, 1600, chunkMs)) }
+        assertFalse(d.recording)
+    }
+
+    @Test
     fun `un pico aislado no abre el clip`() {
         val d = detector()
         // Un golpe corto y luego silencio: el acumulador se reinicia y no llega al umbral.
@@ -60,6 +80,18 @@ class SnoreDetectorTest {
         assertNull(d.feed(0.001, 1600, chunkMs))
         repeat(10) { assertNull(d.feed(0.001, 1600, chunkMs)) }
         assertFalse(d.recording)
+    }
+
+    @Test
+    fun `un ronquido corto de 400 ms abre el clip`() {
+        // Un ronquido entrecortado de menos de medio segundo antes se perdía porque el
+        // umbral de disparo era de 800 ms.
+        val d = detector()
+        var started = false
+        repeat(4) {
+            if (d.feed(0.05, 1600, chunkMs) == SnoreDetector.Event.StartClip) started = true
+        }
+        assertTrue(started)
     }
 
     @Test
