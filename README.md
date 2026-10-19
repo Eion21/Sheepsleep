@@ -1,4 +1,10 @@
-&lt;div align="center"&gt; &lt;img src="Logo/sheep-sleep-1.png" alt="Logo de Sheepsleep" width="140"&gt; 
+![Logo de Sheepsleep](Logo/sheep-sleep-1.png)
+
+# Sheepsleep
+
+**Monitoreo del sueño y relajación para Android. Gratis, de código abierto y 100 % local.**
+
+Sin cuentas · Sin nube · Sin servicios de Google
 
 # Sheepsleep
 
