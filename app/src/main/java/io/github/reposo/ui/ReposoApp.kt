@@ -36,7 +36,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -67,7 +66,7 @@ import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.delay
 import io.github.reposo.data.SettingsStore
 import io.github.reposo.data.SleepViewModel
-import io.github.reposo.monitor.MovementMonitor
+import io.github.reposo.monitor.SleepTrackingService
 import io.github.reposo.monitor.SnoreService
 import io.github.reposo.player.AlarmScheduler
 import io.github.reposo.player.PlayerViewModel
@@ -125,18 +124,17 @@ fun ReposoApp(
     var snoreActive by remember { mutableStateOf(settingsStore.snoreActive) }
     var snoreStartMs by remember { mutableStateOf(settingsStore.snoreStartMs) }
 
-    // El monitor de movimiento sigue a la sesión de sueño, no a la reproducción: antes
-    // arrancaba en PlaybackService.onCreate, así que una noche sin sonido no registraba
-    // movimiento. Al terminar la sesión se para y se vuelca lo pendiente.
+    // El muestreo de movimiento vive en SleepTrackingService (servicio en primer
+    // plano): sobrevive a cerrar la app, a Doze y a reiniciar el teléfono. Aquí solo
+    // se sincroniza: si al abrir hay una sesión abierta el servicio arranca, y cuando
+    // la noche se cierra se detiene. Antes el monitor vivía en esta Activity y moría
+    // con ella, así que cerrar la app a mitad de noche borraba el resto de la noche.
     LaunchedEffect(active != null) {
         if (active != null) {
-            MovementMonitor.start(context)
+            SleepTrackingService.start(context)
         } else {
-            MovementMonitor.stop()
+            SleepTrackingService.stop(context)
         }
-    }
-    DisposableEffect(Unit) {
-        onDispose { MovementMonitor.stop() }
     }
 
     // Salvapantallas nocturno: se abre al empezar la noche y se cierra con "Salir"

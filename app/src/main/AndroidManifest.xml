@@ -11,6 +11,13 @@
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!--
+      Seguimiento del sueño: muestreo del acelerómetro toda la noche en un servicio
+      en primer plano. El tipo specialUse exige describir el caso de uso en la
+      declaración del servicio (PROPERTY_SPECIAL_USE_FGS_SUBTYPE).
+    -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <!--
       Necesario para ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS. Sin esta declaración
       el intent lanza SecurityException y el botón "Excluir de optimización" no hacía
@@ -63,6 +70,23 @@
             android:name=".monitor.SnoreService"
             android:exported="false"
             android:foregroundServiceType="microphone" />
+
+        <service
+            android:name=".monitor.SleepTrackingService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Sleep tracking: samples the accelerometer all night while a sleep session is active" />
+        </service>
+
+        <receiver
+            android:name=".monitor.SleepTrackingBootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
 
         <receiver
             android:name=".widget.MediaWidgetProvider"

@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
+import io.github.reposo.monitor.SleepTrackingService
 import io.github.reposo.widget.StatsWidgetProvider
 import java.io.File
 
@@ -67,13 +68,18 @@ class SleepViewModel(app: Application) : AndroidViewModel(app) {
             val now = System.currentTimeMillis()
             dao.closeOpen(now, MAX_SESSION_MS)
             dao.insert(SleepSession(startMs = now, mixTitle = mixTitle))
+            // El muestreo de movimiento vive en un servicio en primer plano: sobrevive
+            // a cerrar la app y a Doze, que era como se perdían las noches.
+            SleepTrackingService.start(getApplication())
             StatsWidgetProvider.requestUpdate(getApplication())
         }
     }
 
     fun stop() {
         viewModelScope.launch {
-            dao.closeOpen(System.currentTimeMillis(), MAX_SESSION_MS)
+            if (dao.closeOpen(System.currentTimeMillis(), MAX_SESSION_MS) > 0) {
+                SleepTrackingService.stop(getApplication())
+            }
             StatsWidgetProvider.requestUpdate(getApplication())
         }
     }
