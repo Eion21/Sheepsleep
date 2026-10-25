@@ -32,6 +32,14 @@ data class SnoreClip(
     val peakDb: Int,
 )
 
+/**
+ * Tope de duración de una sesión. Al cerrar una noche atascada (el teléfono se
+ * apagó, nadie tocó "Pausar") el fin no puede ser "ahora": convertiría 3 días
+ * reales en una sesión de 72 h que destroza las medias. 14 h cubre de sobra
+ * cualquier noche razonable.
+ */
+const val MAX_SESSION_MS = 14L * 3600_000
+
 @Dao
 interface SleepSessionDao {
     @Insert
@@ -39,6 +47,18 @@ interface SleepSessionDao {
 
     @Query("UPDATE sleep_sessions SET endMs = :endMs WHERE id = :id")
     suspend fun finish(id: Long, endMs: Long)
+
+    /** La primera sesión abierta, si la hay; null si todas las noches están cerradas. */
+    @Query("SELECT * FROM sleep_sessions WHERE endMs IS NULL ORDER BY startMs LIMIT 1")
+    suspend fun openSession(): SleepSession?
+
+    /**
+     * Cierra TODAS las sesiones abiertas. Es lo que usa start() antes de insertar:
+     * antes una sesión atascada bloqueaba para siempre el registro de noches nuevas.
+     * El fin se recorta al tope desde el inicio de cada sesión.
+     */
+    @Query("UPDATE sleep_sessions SET endMs = MIN(:nowMs, startMs + :maxDurationMs) WHERE endMs IS NULL")
+    suspend fun closeOpen(nowMs: Long, maxDurationMs: Long): Int
 
     @Query("SELECT * FROM sleep_sessions ORDER BY startMs DESC")
     fun observeAll(): Flow<List<SleepSession>>

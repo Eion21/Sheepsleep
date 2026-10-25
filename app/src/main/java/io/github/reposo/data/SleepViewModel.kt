@@ -56,18 +56,24 @@ class SleepViewModel(app: Application) : AndroidViewModel(app) {
         sessions.map { list -> list.firstOrNull { it.endMs == null } }
             .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
+    /**
+     * Empieza una noche. No consulta el estado en memoria de la UI: cierra en BD
+     * cualquier sesión atascada (proceso muerto, reinicio, "Pausar" sin pulsar) y
+     * siempre inserta la nueva. Antes, una sesión abierta hacía que start() no
+     * insertara nada y todas las noches siguientes se perdían en silencio.
+     */
     fun start(mixTitle: String?) {
         viewModelScope.launch {
-            if (active.value == null) {
-                dao.insert(SleepSession(startMs = System.currentTimeMillis(), mixTitle = mixTitle))
-                StatsWidgetProvider.requestUpdate(getApplication())
-            }
+            val now = System.currentTimeMillis()
+            dao.closeOpen(now, MAX_SESSION_MS)
+            dao.insert(SleepSession(startMs = now, mixTitle = mixTitle))
+            StatsWidgetProvider.requestUpdate(getApplication())
         }
     }
 
     fun stop() {
         viewModelScope.launch {
-            active.value?.let { dao.finish(it.id, System.currentTimeMillis()) }
+            dao.closeOpen(System.currentTimeMillis(), MAX_SESSION_MS)
             StatsWidgetProvider.requestUpdate(getApplication())
         }
     }
