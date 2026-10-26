@@ -64,6 +64,8 @@ fun SettingsScreen(
     var alarmVibration by remember { mutableStateOf(settings.alarmVibration) }
     // Retención real: se lee y se guarda en SettingsStore, que es quien la aplica.
     var clipRetentionDays by remember { mutableIntStateOf(settings.clipRetentionDays) }
+    // Objetivo de sueño: alimenta el puntaje de la noche (50 de sus 100 puntos).
+    var sleepGoalMinutes by remember { mutableIntStateOf(settings.sleepGoalMinutes) }
 
     // Actualizaciones: check silencioso de GitHub Releases al abrir la pantalla.
     var update by remember { mutableStateOf<UpdateInfo?>(null) }
@@ -248,6 +250,31 @@ fun SettingsScreen(
                     Text(
                         "Los clips y el registro de movimiento más antiguos se borran solos. " +
                             "El audio nunca sale del dispositivo.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 12.sp
+                    )
+
+                    Spacer(Modifier.height(4.dp))
+                    Text("Objetivo de sueño", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
+                    Text(
+                        "Una noche completa son %d h %02d min".format(sleepGoalMinutes / 60, sleepGoalMinutes % 60),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 13.sp
+                    )
+                    ClaySlider(
+                        value = sleepGoalMinutes.toFloat(),
+                        onValueChange = {
+                            // Grid de media hora: el snap del slider + el redondeo
+                            // evitan objetivos como "7 h 03 min".
+                            sleepGoalMinutes = (it.toInt() / 30) * 30
+                            settings.sleepGoalMinutes = sleepGoalMinutes
+                        },
+                        valueRange = SettingsStore.MIN_SLEEP_GOAL_MINUTES.toFloat()..
+                            SettingsStore.MAX_SLEEP_GOAL_MINUTES.toFloat(),
+                        steps = (SettingsStore.MAX_SLEEP_GOAL_MINUTES - SettingsStore.MIN_SLEEP_GOAL_MINUTES) / 30 - 1,
+                    )
+                    Text(
+                        "Se usa para puntuar la noche en el reporte de la mañana.",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 12.sp
                     )

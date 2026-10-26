@@ -52,6 +52,9 @@ interface SleepSessionDao {
     @Query("SELECT * FROM sleep_sessions WHERE endMs IS NULL ORDER BY startMs LIMIT 1")
     suspend fun openSession(): SleepSession?
 
+    @Query("SELECT * FROM sleep_sessions WHERE id = :id")
+    suspend fun byId(id: Long): SleepSession?
+
     /**
      * Cierra TODAS las sesiones abiertas. Es lo que usa start() antes de insertar:
      * antes una sesión atascada bloqueaba para siempre el registro de noches nuevas.

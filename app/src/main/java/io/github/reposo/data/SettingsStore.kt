@@ -84,6 +84,16 @@ class SettingsStore(context: Context) {
                 .apply()
         }
 
+    /** Horas en cama que se considera una noche completa, en minutos. Alimenta el puntaje. */
+    var sleepGoalMinutes: Int
+        get() = prefs.getInt(KEY_SLEEP_GOAL_MINUTES, DEFAULT_SLEEP_GOAL_MINUTES)
+            .coerceIn(MIN_SLEEP_GOAL_MINUTES, MAX_SLEEP_GOAL_MINUTES)
+        set(value) {
+            prefs.edit()
+                .putInt(KEY_SLEEP_GOAL_MINUTES, value.coerceIn(MIN_SLEEP_GOAL_MINUTES, MAX_SLEEP_GOAL_MINUTES))
+                .apply()
+        }
+
     companion object {
         const val KEY_FADE_OUT_MINUTES = "fade_out_minutes"
         const val KEY_NIGHT_VOLUME_LIMIT = "night_volume_limit"
@@ -107,6 +117,11 @@ class SettingsStore(context: Context) {
 
         /** Valor por defecto, usado también al limpiar si nunca se tocó el ajuste. */
         const val DEFAULT_CLIP_RETENTION_DAYS = 30
+
+        const val KEY_SLEEP_GOAL_MINUTES = "sleep_goal_minutes"
+        const val MIN_SLEEP_GOAL_MINUTES = 240  // 4 h
+        const val MAX_SLEEP_GOAL_MINUTES = 720  // 12 h
+        const val DEFAULT_SLEEP_GOAL_MINUTES = 480  // 8 h
 
         const val DEFAULT_FADE_OUT_MINUTES = 15
         const val DEFAULT_NIGHT_VOLUME_LIMIT = 0.8f

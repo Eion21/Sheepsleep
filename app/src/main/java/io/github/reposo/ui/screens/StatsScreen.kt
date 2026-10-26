@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import io.github.reposo.data.SleepSession
 import io.github.reposo.data.SnoreClip
 import io.github.reposo.data.MovementBucket
+import io.github.reposo.data.SleepAnalysis
 import io.github.reposo.ui.stretchOverscroll
 import io.github.reposo.ui.theme.ClayBackground
 import io.github.reposo.ui.theme.ClayCard
@@ -39,6 +40,7 @@ fun StatsScreen(
     snoreClips: List<SnoreClip> = emptyList(),
     onOpenSnore: () -> Unit = {},
     movementBuckets: List<MovementBucket> = emptyList(),
+    sleepGoalMinutes: Int = 480,
 ) {
     val done = sessions.filter { it.endMs != null }
     val dayClips = snoreClips.count { it.startMs >= System.currentTimeMillis() - 24L * 3600_000 }
@@ -76,10 +78,16 @@ fun StatsScreen(
                 val last = done.first()
                 item { Text("Última noche · ${formatDateTime(last.startMs)}", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onBackground) }
                 item {
+                    // El puntaje sustituye a los "—" que había: antes las tarjetas de
+                    // "Dormido" y "Calidad" eran relleno sin datos. El remember vive
+                    // dentro del item: el builder del LazyColumn no es contexto composable.
+                    val lastReport = remember(last, movementBuckets, sleepGoalMinutes) {
+                        SleepAnalysis.analyze(last.startMs, last.endMs!!, movementBuckets, sleepGoalMinutes)
+                    }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         StatCard(formatDuration(last.endMs!! - last.startMs), "En la cama", Modifier.weight(1f))
-                        StatCard("—", "Dormido", Modifier.weight(1f))
-                        StatCard("—", "Calidad", Modifier.weight(1f))
+                        StatCard("${lastReport.score}", "Puntaje", Modifier.weight(1f))
+                        StatCard(styleLabel(lastReport.style), "Estilo", Modifier.weight(1f))
                     }
                 }
                 item {

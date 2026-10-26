@@ -38,6 +38,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -64,13 +65,18 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.delay
+import io.github.reposo.data.NightReport
+import io.github.reposo.data.ReposoDatabase
 import io.github.reposo.data.SettingsStore
+import io.github.reposo.data.SleepAnalysis
+import io.github.reposo.data.SleepSession
 import io.github.reposo.data.SleepViewModel
 import io.github.reposo.monitor.SleepTrackingService
 import io.github.reposo.monitor.SnoreService
 import io.github.reposo.player.AlarmScheduler
 import io.github.reposo.player.PlayerViewModel
 import io.github.reposo.ui.screens.HomeScreen
+import io.github.reposo.ui.screens.MorningReportDialog
 import io.github.reposo.ui.screens.NightScreensaver
 import io.github.reposo.ui.screens.MixerScreen
 import io.github.reposo.ui.screens.RonquidosScreen
@@ -209,6 +215,27 @@ fun ReposoApp(
     LaunchedEffect(active) {
         if (active == null) nightMode = false
     }
+
+    // Reporte de la mañana: cuando la sesión activa se cierra, se busca esa noche en
+    // la BD (no en el flow, que puede llegar desfasado un frame) y se muestra su
+    // resumen una sola vez.
+    var morningReport by remember { mutableStateOf<Pair<SleepSession, NightReport>?>(null) }
+    var lastActiveId by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(active) {
+        val current = active
+        if (current != null) {
+            lastActiveId = current.id
+        } else if (lastActiveId != 0L) {
+            val finished = ReposoDatabase.get(context).sleepSessions().byId(lastActiveId)
+            if (finished?.endMs != null) {
+                val goal = SettingsStore(context).sleepGoalMinutes
+                morningReport = finished to SleepAnalysis.analyze(
+                    finished.startMs, finished.endMs!!, movementBuckets, goal,
+                )
+            }
+            lastActiveId = 0L
+        }
+    }
     LaunchedEffect(route) {
         // Al navegar fuera de Dormir el overlay pierde sentido.
         if (route != Destination.Sleep.route) nightMode = false
@@ -302,6 +329,7 @@ fun ReposoApp(
                             snoreClips = snoreClips,
                             onOpenSnore = { nav.navigate(SNORE_ROUTE) },
                             movementBuckets = movementBuckets,
+                            sleepGoalMinutes = SettingsStore(context).sleepGoalMinutes,
                         )
                     }
                     composable(Destination.Settings.route) {
@@ -408,6 +436,14 @@ fun ReposoApp(
                 },
                 onPlayMix = { playerVm.playMix(it.title, it.layers) },
                 onExit = { nightMode = false },
+            )
+        }
+
+        morningReport?.let { (session, report) ->
+            MorningReportDialog(
+                session = session,
+                report = report,
+                onDismiss = { morningReport = null },
             )
         }
     }
