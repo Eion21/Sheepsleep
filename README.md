@@ -6,12 +6,12 @@
 
 **Sleep and relaxation for Android. Free, open source, 100 % local.**
 
-[![Versión](https://img.shields.io/badge/versi%C3%B3n-1.2.0-blue?style=flat-square)](https://github.com/Eion21/Sheepsleep/releases)
+[![Versión](https://img.shields.io/badge/versi%C3%B3n-1.3.0-blue?style=flat-square)](https://github.com/Eion21/Sheepsleep/releases)
 [![Android](https://img.shields.io/badge/Android-8.0%2B-3DDC84?style=flat-square&logo=android&logoColor=white)](https://developer.android.com)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.4-7F52FF?style=flat-square&logo=kotlin&logoColor=white)](https://kotlinlang.org)
 [![Compose](https://img.shields.io/badge/Jetpack%20Compose-Material%203-4285F4?style=flat-square&logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
 [![Licencia](https://img.shields.io/badge/licencia-MIT-green?style=flat-square)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-46%20passing-brightgreen?style=flat-square)](#pruebas)
+[![Tests](https://img.shields.io/badge/tests-66%20passing-brightgreen?style=flat-square)](#pruebas)
 
 [Español](#español) · [English](#english)
 
@@ -45,7 +45,8 @@ Sin cuentas · Sin nube · Sin servicios de Google · Sin anuncios
 | 🎧 **Mezclas** | Ocho sonidos en capas con volumen independiente. Cada capa usa su propio `ExoPlayer` dentro de un servicio en segundo plano con notificación. |
 | 🌙 **Dormir** | Salvapantallas nocturno con reloj, luna animada y tus mezclas. Mantiene la pantalla encendida y oculta las barras del sistema. |
 | 🐑 **Ovejitas** | Contador para conciliar el sueño: la oveja salta de derecha a izquierda de la tarjeta y el número se anima al sumar. |
-| 📊 **Estadísticas** | Noches registradas, actividad reciente, calendario de sueño de 12 semanas e hipnograma por fases. |
+| 📊 **Estadísticas** | Noches registradas, actividad reciente, calendario de sueño de 12 semanas, hipnograma por fases y puntaje de 0 a 100 con estilo de la noche. |
+| 🌅 **Reporte de la mañana** | Al detener la noche: puntaje, estilo de la borrega (sosegada, soñadora o inquieta) y desglose, todo calculado en el dispositivo. |
 | 🎙️ **Ronquidos** | Grabación activada por volumen: guarda solo lo que suena fuerte, no toda la noche. |
 | 🛏️ **Movimiento** | Acelerómetro con buckets de 10 s para estimar fases y momentos inquietos. |
 | ⏰ **Despertador** | Alarma exacta con reintento tras reinicio. |
@@ -129,7 +130,7 @@ validado con SHA-256 antes de publicar cada archivo.
 ./gradlew :app:testDebugUnitTest
 ```
 
-46 pruebas centradas en lo que puede afectar al usuario:
+66 pruebas centradas en lo que puede afectar al usuario:
 
 | Archivo | Qué comprueba |
 | --- | --- |
@@ -137,6 +138,10 @@ validado con SHA-256 antes de publicar cada archivo.
 | `HashVerifiedDownloadTest` | Un SHA-256 incorrecto no publica el archivo ni deja restos. |
 | `CatalogValidationTest` | Las entradas inválidas del catálogo (rutas, extensiones, hashes) se descartan. |
 | `ClipRetentionTest` | La retención configurada se persiste y acota; el corte de limpieza la respeta. |
+| `SleepGoalTest` | El objetivo de sueño (8 h por defecto) se persiste y recorta a un rango válido. |
+| `SleepSessionDaoTest` | Las sesiones atascadas se cierran con tope de duración y sin tocar las cerradas. |
+| `SleepAnalysisTest` | El puntaje 0–100 y el estilo de la noche se calculan según lo prometido. |
+| `SleepTrackingBootReceiverTest` | Tras reiniciar, el seguimiento solo se reanuda si quedó una noche abierta. |
 | `SoundCatalogTest` | Los sonidos sin archivo no aparecen en la lista y todo lo listado se puede reproducir. |
 | `SnoreDetectorTest` | El silencio no dispara grabaciones, un pico aislado tampoco y un sonido sostenido abre y cierra el clip. |
 
@@ -206,7 +211,8 @@ without sending a single byte to a server.
 | 🎧 **Sound mixer** | Eight layered sounds with independent volume. Each layer runs on its own `ExoPlayer` inside a foreground service, so audio keeps playing with the screen off. |
 | 🌙 **Night mode** | A screensaver with a clock, an animated moon and your mixes. Keeps the screen on and hides the system bars. |
 | 🐑 **Sheep counter** | Count sheep to fall asleep: a sheep hops across the card and the number animates on each tap. |
-| 📊 **Statistics** | Logged nights, recent activity, a 12-week sleep calendar and a hypnogram built from movement. |
+| 📊 **Statistics** | Logged nights, recent activity, a 12-week sleep calendar, a hypnogram built from movement, and a 0–100 sleep score with a night style. |
+| 🌅 **Morning report** | When you stop the night: score, sheep style (calm, dreamy or restless) and a breakdown, computed entirely on device. |
 | 🎙️ **Snore detection** | Volume-triggered recording: only loud passages are saved, not the whole night. |
 | 🛏️ **Movement tracking** | Accelerometer sampled into 10-second buckets to estimate sleep phases and restless moments. |
 | ⏰ **Alarm** | Exact alarm that survives reboots. |
@@ -253,8 +259,9 @@ and normalizes to about −20 dBFS so layers can be mixed without clipping.
 ./gradlew :app:testDebugUnitTest
 ```
 
-46 unit tests covering version comparison, download integrity (SHA-256), catalog
-validation, clip retention, sound availability and snore detection.
+66 unit tests covering version comparison, download integrity (SHA-256), catalog
+validation, clip retention, sleep scoring, session recovery, sound availability
+and snore detection.
 
 ### License
 
